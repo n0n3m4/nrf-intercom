@@ -1,0 +1,122 @@
+/*
+ * Pro Micro nRF52840 (nice!nano v2 pinout) on an intercom handset.
+ *
+ *   P1.11  Omron G3VM-61D1 (NO)   high = "door open" button pressed
+ *   P1.15  CPC1117N (NC)          high = handset picked up
+ *   P0.02  AIN0                   ring signal, 12 V square through 100k/20k (~2.0 V)
+ *
+ * The relay outputs drive PhotoMOS LEDs, hence high drive (H0H1, ~10 mA).
+ */
+
+#include <zephyr/dt-bindings/gpio/nordic-nrf-gpio.h>
+#include <zephyr/dt-bindings/adc/nrf-saadc.h>
+#include <zephyr/dt-bindings/comparator/nrf-comp.h>
+#include <zephyr/dt-bindings/regulator/nrf5x.h>
+
+/*
+ * Flash, as the Adafruit UF2 bootloader (0.6.0, no SoftDevice) lays it out:
+ * MBR at 0, application from 0x1000, bootloader from 0xF4000. The board's
+ * default table is MCUboot's, so it is replaced. UF2 blocks above 0xAD000 are
+ * refused by that bootloader, which bounds the application.
+ */
+/ {
+	chosen {
+		zephyr,code-partition = &code_partition;
+	};
+};
+
+/delete-node/ &boot_partition;
+/delete-node/ &slot0_partition;
+/delete-node/ &slot1_partition;
+/delete-node/ &storage_partition;
+
+&flash0 {
+	partitions {
+		code_partition: partition@1000 {
+			label = "application";
+			reg = <0x00001000 0x000ac000>;
+		};
+	};
+};
+
+/ {
+	zephyr,user {
+		door-gpios = <&gpio1 11 (GPIO_ACTIVE_HIGH | NRF_GPIO_DRIVE_H0H1)>;
+		handset-gpios = <&gpio1 15 (GPIO_ACTIVE_HIGH | NRF_GPIO_DRIVE_H0H1)>;
+		io-channels = <&adc 0>;
+	};
+};
+
+/*
+ * Ring detector. VDD is the board's 3.3 V regulator, so 3/8 VDD is ~1.24 V,
+ * between the divider's 0 V and ~2.0 V. Calibration knob: if the line idles
+ * above 0 V or the ring is weaker, move refsel.
+ */
+&comp {
+	compatible = "nordic,nrf-lpcomp";
+	status = "okay";
+	psel = <NRF_COMP_AIN0>;
+	refsel = "VDD_3_8";
+	enable-hyst;
+};
+
+/*
+ * Battery: on nice!nano v2 clones B+ goes straight to VDDH (REG0 makes the
+ * 3.3 V), so VDDH/5 against the 0.6 V reference at gain 1/6 (3.6 V full scale)
+ * reads it with no external divider.
+ */
+&adc {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	status = "okay";
+
+	channel@0 {
+		reg = <0>;
+		zephyr,gain = "ADC_GAIN_1_6";
+		zephyr,reference = "ADC_REF_INTERNAL";
+		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+		zephyr,input-positive = <NRF_SAADC_VDDHDIV5>;
+		zephyr,resolution = <12>;
+		zephyr,oversampling = <4>;
+	};
+};
+
+/*
+ * Both DC/DC stages on: REG1 (VDD -> core/radio) roughly halves the radio's
+ * battery current, REG0 (VDDH -> VDD) saves another 10-20 % with the battery on
+ * VDDH. Each needs its inductor on the board (DCC for REG1, DCCH for REG0);
+ * without it the app does not run. Recover with a double-tap on RST (the
+ * bootloader runs before this takes effect) and drop the stage that lacks it.
+ * Zephyr's soc.c reads these at boot: reg1's mode, reg0's status.
+ */
+&reg1 {
+	regulator-initial-mode = <NRF5X_REG_MODE_DCDC>;
+};
+
+&reg0 {
+	status = "okay";
+};
+
+&uart0 {
+	status = "disabled";
+};
+
+&i2c0 {
+	status = "disabled";
+};
+
+&i2c1 {
+	status = "disabled";
+};
+
+&spi2 {
+	status = "disabled";
+};
+
+&pwm0 {
+	status = "disabled";
+};
+
+&ieee802154 {
+	status = "disabled";
+};
