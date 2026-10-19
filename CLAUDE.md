@@ -72,6 +72,9 @@ overlay.
 - **Debug relays**: CTRL `[0x10, mask]` drives the relays by hand. Deliberately
   kept in release (it only duplicates the physical buttons); held only while
   the client stays connected, cleared by a ring action. Not an event.
+- **Bootloader over BLE**: CTRL `[0x20]` sets GPREGRET = 0x57 (Adafruit
+  bootloader's UF2 magic) and soft-resets: the same as a double-tap on RST,
+  for reflashing without opening the case. Also kept in release.
 - **Battery**: SAADC VDDH/5 — real on nice!nano-v2-style boards where B+ feeds
   VDDH. Firmware sends mV; % mapping belongs to the HA side.
 

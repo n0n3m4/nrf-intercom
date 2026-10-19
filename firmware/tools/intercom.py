@@ -9,6 +9,8 @@
                                    debug: hold the listed relays on for S
                                    seconds (default 1), then all off; the
                                    firmware drops them when we disconnect
+  intercom.py bootloader           reboot into the UF2 bootloader (plug USB in
+                                   first), then flash.sh as after a double-tap
   intercom.py --selftest           decode/encode check, no radio
 """
 import argparse
@@ -22,6 +24,7 @@ CTRL = "ce780001-18cf-43f4-97fa-9fc4443b48e5"
 MODES = {"none": 0, "deny": 1, "allow": 2, "until": 3, "times": 4}
 RELAYS = {"door": 1, "handset": 2}
 OP_RELAYS = 0x10
+OP_BOOTLOADER = 0x20
 SESSION_REFRESH_S = 5  # under the firmware's 10 s idle timeout
 STATE = struct.Struct("<BBBHHHIH")  # ver mode flags ring open deny remaining batt_mv
 
@@ -114,7 +117,7 @@ def selftest():
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("cmd", nargs="?", choices=["scan", "set", "relay"])
+    ap.add_argument("cmd", nargs="?", choices=["scan", "set", "relay", "bootloader"])
     ap.add_argument("args", nargs="*", help="mode [number] for set, relay names for relay")
     ap.add_argument("--hold", type=float, default=1.0)
     ap.add_argument("--timeout", type=float, default=15)
@@ -127,6 +130,8 @@ def main():
     elif a.cmd == "set" and 1 <= len(a.args) <= 2 and a.args[0] in MODES:
         arg = int(a.args[1]) if len(a.args) == 2 else None
         asyncio.run(set_mode(encode(a.args[0], arg), a.timeout))
+    elif a.cmd == "bootloader":
+        asyncio.run(set_mode(bytes([OP_BOOTLOADER]), a.timeout))
     elif a.cmd == "relay" and a.args and set(a.args) <= set(RELAYS):
         asyncio.run(relay(a.args, a.hold, a.timeout))
     else:

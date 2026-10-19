@@ -76,7 +76,7 @@ going down means a reboot, so resync without firing.
 
 | Characteristic | Properties | Value |
 |---|---|---|
-| `ce780001-…` CTRL | write | `[mode]`, or `[3, seconds u32]`, `[4, count u32]`; debug `[0x10, mask]`; anything else → ATT error 0x13 |
+| `ce780001-…` CTRL | write | `[mode]`, or `[3, seconds u32]`, `[4, count u32]`; debug `[0x10, mask]`; `[0x20]` reboots into the bootloader; anything else → ATT error 0x13 |
 | `ce780002-…` STATE | read, notify | advert bytes 2..16 |
 
 No pairing. A client idle for 10 s is disconnected.
@@ -86,6 +86,12 @@ handset (P1.15). It only duplicates the intercom's own buttons, so it is in
 release builds too. The relays drop when the client disconnects (or idles out),
 and a ring action overrides and clears them. Not an event: no counters, no
 advert burst.
+
+`[0x20]` reboots into the Adafruit UF2 bootloader (GPREGRET = 0x57, then a
+soft reset), exactly as a double-tap on RST does: the USB drive mounts and
+`./flash.sh` works. Plug USB in first: don't count on the bootloader returning to
+the application on its own, so sent on battery alone it can leave the board out
+of service until it is reset.
 
 ## Bench client
 
@@ -97,5 +103,6 @@ python tools/intercom.py set until 3600
 python tools/intercom.py set times 2
 python tools/intercom.py relay handset --hold 3     # debug: handset up 3 s
 python tools/intercom.py relay handset door        # both for 1 s
+python tools/intercom.py bootloader                # then ./flash.sh
 python tools/intercom.py --selftest   # no radio
 ```

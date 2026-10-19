@@ -19,6 +19,7 @@
 #include <zephyr/drivers/comparator.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/kernel.h>
+#include <zephyr/sys/reboot.h>
 #include <zephyr/sys/atomic.h>
 #include <zephyr/sys/byteorder.h>
 #include <zephyr/sys/printk.h>
@@ -68,6 +69,13 @@ enum mode
 #define OP_RELAYS 0x10
 #define RELAY_DOOR BIT(0)
 #define RELAY_HANDSET BIT(1)
+
+// Maintenance: [OP_BOOTLOADER] reboots into the Adafruit UF2 bootloader, the
+// same as a double-tap on RST, so the board can be reflashed over USB without
+// opening the case. The bootloader picks the mode from GPREGRET after a soft
+// reset; 0x57 is its DFU_MAGIC_UF2_RESET.
+#define OP_BOOTLOADER 0x20
+#define GPREGRET_UF2 0x57
 
 // --- hardware --------------------------------------------------------------------
 
@@ -184,6 +192,12 @@ static ssize_t write_ctrl(struct bt_conn *conn, const struct bt_gatt_attr *attr,
     case MODE_ALLOW_UNTIL:  // seconds from now
     case MODE_ALLOW_N:      // number of opens
       if (len != 5 || (c.arg = sys_get_le32(p + 1)) == 0)
+      {
+        return BT_GATT_ERR(BT_ATT_ERR_VALUE_NOT_ALLOWED);
+      }
+      break;
+    case OP_BOOTLOADER:
+      if (len != 1)
       {
         return BT_GATT_ERR(BT_ATT_ERR_VALUE_NOT_ALLOWED);
       }
@@ -378,6 +392,14 @@ static void set_relays(uint8_t mask)
 // Returns true if the mode changed, i.e. the advert wants a burst.
 static bool apply_cmd(const struct cmd *c)
 {
+  if (c->mode == OP_BOOTLOADER)
+  {
+    printk("rebooting into the UF2 bootloader\n");
+    set_relays(0);
+    k_msleep(200);  // let the write response reach the client
+    NRF_POWER->GPREGRET = GPREGRET_UF2;
+    sys_reboot(SYS_REBOOT_COLD);
+  }
   if (c->mode == OP_RELAYS)
   {
     set_relays((uint8_t)c->arg);
