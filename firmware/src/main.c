@@ -237,13 +237,16 @@ BT_GATT_SERVICE_DEFINE(s_svc, BT_GATT_PRIMARY_SERVICE(&s_svc_uuid),
 
 static void on_connected(struct bt_conn *conn, uint8_t err)
 {
+  // A connectable advert stops on connect, even one that fails: a link lost
+  // before the host saw it complete arrives here with err set.
+  atomic_set_bit(&s_flags, F_ADV_LOST);
   if (err != 0)
   {
+    k_sem_give(&s_event);
     return;
   }
   s_conn = bt_conn_ref(conn);
   s_connected = true;
-  atomic_set_bit(&s_flags, F_ADV_LOST);  // a connectable advert stops on connect
   touch();
 }
 
@@ -299,9 +302,10 @@ static void adv_apply(int64_t now)
     return;
   }
   const int want = now < s_burst_until;
-  if (want == s_adv_kind)
+  // -EAGAIN: the advert stopped behind our back; restart it below.
+  if (want == s_adv_kind &&
+      bt_le_adv_update_data(s_ad, ARRAY_SIZE(s_ad), s_sd, ARRAY_SIZE(s_sd)) != -EAGAIN)
   {
-    bt_le_adv_update_data(s_ad, ARRAY_SIZE(s_ad), s_sd, ARRAY_SIZE(s_sd));
     return;
   }
   bt_le_adv_stop();
