@@ -5,8 +5,10 @@ detects ringing and, per a mode set over BLE, does nothing, rejects the call or
 opens the door. Two parts:
 
 - `firmware/` — Pro Micro nRF52840, Zephyr / nRF Connect SDK v3.3.0. Done.
-- Home Assistant integration — not started; it consumes the protocol in
-  `firmware/README.md` (passive adverts for state/events, a GATT write for the mode).
+- `custom_components/nrf_intercom/` — Home Assistant integration, installed
+  through HACS from this repo (`hacs.json` at the root). It consumes the
+  protocol in `firmware/README.md`: passive adverts for state/events, a GATT
+  write for the mode. User-facing docs in the root `README.md`.
 
 Read `firmware/README.md` for wiring, modes, timings and the protocol table;
 none of that is repeated here.
@@ -26,7 +28,11 @@ firmware/build.sh debug              # printk on USB CDC ACM (keeps HFXO on)
 firmware/build.sh [debug] --pristine # after switching flavours or Kconfig/DT changes
 firmware/flash.sh                    # double-tap RST first
 python3 firmware/tools/intercom.py --selftest   # protocol encode/decode, no radio
+python3 custom_components/nrf_intercom/protocol.py  # same, plus HA's mode sync logic
 ```
+
+The integration is tested by the user on their Home Assistant; don't install
+Home Assistant here to test it.
 
 Never pass `-d` to `build.sh`: it already passes `-d firmware/build`, and a
 second `-d` wins and is resolved relative to `~/ncs/v3.3.0`, littering the SDK.
@@ -85,10 +91,24 @@ Real hardware, real intercom: the timings at the top of `main.c` and the LPCOMP
 
 ## Protocol changes
 
-The protocol lives in three places: `firmware/src/main.c`, the table in
-`firmware/README.md`, and `firmware/tools/intercom.py` (plus its `--selftest`).
-Change all three together, and later the HA integration. Bump
-`PROTOCOL_VERSION` for incompatible changes.
+The protocol lives in four places: `firmware/src/main.c`, the table in
+`firmware/README.md`, `firmware/tools/intercom.py` (plus its `--selftest`) and
+`custom_components/nrf_intercom/protocol.py` (plus its self-check). Change all
+four together, and bump `version` in `manifest.json`. Bump `PROTOCOL_VERSION`
+for incompatible changes: the integration ignores adverts of other versions.
+
+## Home Assistant integration, in one place: `coordinator.py`
+
+- HA owns the mode (`Desired`, restored by the select's attributes). Every
+  advert runs `protocol.advance()` (timed modes run down: ALLOW_N follows the
+  advertised count, ALLOW_UNTIL lapses `UNTIL_SLACK_S` early) then
+  `protocol.command()`: a CTRL write whenever the advert's mode differs.
+- After every write, success or not, it re-checks after `RETRY_S`: HA drops
+  adverts identical to the last one, so the next advert is not a retry trigger.
+- Events: one per counter increment; no baseline or a counter going down
+  (reboot) resyncs silently.
+- Debug relays and the bootloader command are deliberately not exposed;
+  `intercom.py` covers them.
 
 ## Git
 

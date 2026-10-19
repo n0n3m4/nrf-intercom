@@ -1,0 +1,20 @@
+{
+  "domain": "nrf_intercom",
+  "name": "BLE Intercom",
+  "bluetooth": [
+    {
+      "manufacturer_id": 65535,
+      "manufacturer_data_start": [73, 67],
+      "connectable": true
+    }
+  ],
+  "codeowners": ["@n0n3m4"],
+  "config_flow": true,
+  "dependencies": ["bluetooth_adapters"],
+  "documentation": "https://github.com/n0n3m4/nrf-intercom",
+  "integration_type": "device",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/n0n3m4/nrf-intercom/issues",
+  "requirements": ["bleak-retry-connector>=3.5.0"],
+  "version": "0.1.0"
+}

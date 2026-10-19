@@ -1,0 +1,62 @@
+{
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "title": "Add a BLE intercom module",
+        "description": "Pick the module to control.",
+        "data": {
+          "address": "Bluetooth device"
+        }
+      },
+      "bluetooth_confirm": {
+        "title": "Set up {name}",
+        "description": "Add the intercom module {name}?"
+      }
+    },
+    "abort": {
+      "already_configured": "This module is already configured.",
+      "no_devices_found": "No intercom modules have been seen yet. It advertises every second or so; check it has power and is in range of a Bluetooth adapter or proxy.",
+      "not_supported": "This device is not an intercom module."
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "ringing": { "name": "Ringing" }
+    },
+    "event": {
+      "doorbell": {
+        "name": "Doorbell",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "ring": "Ring",
+              "opened": "Door opened",
+              "denied": "Call rejected"
+            }
+          }
+        }
+      }
+    },
+    "number": {
+      "allow_minutes": { "name": "Allow for" },
+      "allow_rings": { "name": "Allow rings" }
+    },
+    "select": {
+      "mode": {
+        "name": "Mode",
+        "state": {
+          "none": "Do nothing",
+          "deny": "Reject calls",
+          "allow": "Open the door",
+          "allow_for": "Open for a while",
+          "allow_times": "Open a number of times"
+        }
+      }
+    },
+    "sensor": {
+      "battery": { "name": "Battery" },
+      "voltage": { "name": "Battery voltage" }
+    }
+  }
+}
