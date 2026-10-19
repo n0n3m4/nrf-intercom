@@ -53,6 +53,9 @@ class IntercomCoordinator(PassiveBluetoothDataUpdateCoordinator):
         self.allow_minutes = 60.0
         self.allow_rings = 1.0
         self._force = False
+        # A mode was picked and is not confirmed yet: the select shows it
+        # rather than snapping back to the advertised mode meanwhile.
+        self.pending = False
         self._task: asyncio.Task | None = None
         self._retry: Callable[[], None] | None = None
 
@@ -83,6 +86,7 @@ class IntercomCoordinator(PassiveBluetoothDataUpdateCoordinator):
             deltas = {}
         self.events = [COUNTERS[k] for k, d in deltas.items() for _ in range(d)]
         if not self._force:
+            self.pending = False  # first advert after the write landed
             self.desired = protocol.advance(
                 self.desired, adv, deltas.get("open", 0), time.time()
             )
@@ -103,6 +107,7 @@ class IntercomCoordinator(PassiveBluetoothDataUpdateCoordinator):
             mode, now + self.allow_minutes * 60, int(self.allow_rings)
         )
         self._force = True
+        self.pending = True
         self.async_update_listeners()
         self._sync()
 
@@ -117,10 +122,10 @@ class IntercomCoordinator(PassiveBluetoothDataUpdateCoordinator):
             self._retry()
             self._retry = None
         self._task = self.entry.async_create_background_task(
-            self.hass, self._write(payload), f"{DOMAIN} write {self.address}"
+            self.hass, self._write(payload, self.desired), f"{DOMAIN} write {self.address}"
         )
 
-    async def _write(self, payload: bytes) -> None:
+    async def _write(self, payload: bytes, want: protocol.Desired) -> None:
         try:
             device = bluetooth.async_ble_device_from_address(
                 self.hass, self.address, connectable=True
@@ -136,9 +141,14 @@ class IntercomCoordinator(PassiveBluetoothDataUpdateCoordinator):
                 await client.disconnect()
         except Exception as err:  # noqa: BLE001 -- bleak errors are not OSError
             _LOGGER.debug("%s: writing %s failed: %s", self.address, payload.hex(), err)
+            if self.pending:
+                self.pending = False  # show the module's mode; the retry goes on
+                self.async_update_listeners()
         else:
             _LOGGER.debug("%s: wrote %s", self.address, payload.hex())
-            self._force = False
+            # A mode picked while this was in flight still has to be written.
+            if self.desired == want:
+                self._force = False
 
         @callback
         def _again(_now) -> None:

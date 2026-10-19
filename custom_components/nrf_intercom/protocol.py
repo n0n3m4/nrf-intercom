@@ -22,7 +22,9 @@ MODES = ("none", "deny", "allow", "allow_for", "allow_times")
 # The device's clock and ours drift apart, so a timed window closing within
 # this many seconds counts as closed: otherwise a device that fell back to NONE
 # a moment early would be sent a few seconds of ALLOW, a connection for nothing.
-UNTIL_SLACK_S = 60
+# Its 32 kHz crystal drifts ~2 s a day; it must stay well under the shortest
+# window (1 min), or allow_for lapses as soon as it is written.
+UNTIL_SLACK_S = 10
 
 
 class Desired(NamedTuple):
@@ -101,7 +103,10 @@ def _selftest() -> None:
     u = Desired(ALLOW_UNTIL, deadline=1000.0)
     assert advance(u, state(NONE), 0, 100) == u
     assert command(u, state(NONE), 100, False) == encode(ALLOW_UNTIL, 900)
-    assert advance(u, state(NONE), 0, 950).mode == NONE
+    assert advance(u, state(NONE), 0, 995).mode == NONE
+    # The shortest window survives the write that sets it.
+    one = Desired(ALLOW_UNTIL, deadline=100.0 + 60)
+    assert advance(one, state(ALLOW_UNTIL, 55), 0, 105) == one
     # Agreement means silence unless forced; no advert yet means send.
     assert command(Desired(ALLOW), state(ALLOW), 0, False) is None
     assert command(Desired(ALLOW), state(ALLOW), 0, True) == b"\x02"

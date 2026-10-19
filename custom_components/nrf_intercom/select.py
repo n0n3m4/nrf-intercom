@@ -1,5 +1,6 @@
-"""The mode. Shows what the module advertises; choosing an option sets what HA
-wants, which is written to the module and re-written whenever it disagrees."""
+"""The mode. Shows what the module advertises, or a just-picked option until
+the write lands or fails; choosing an option sets what HA wants, which is
+written to the module and re-written whenever it disagrees."""
 
 from __future__ import annotations
 
@@ -27,6 +28,8 @@ class IntercomMode(IntercomEntity, RestoreEntity, SelectEntity):
 
     @property
     def current_option(self) -> str | None:
+        if self.coordinator.pending:
+            return protocol.MODES[self.coordinator.desired.mode]
         state = self.coordinator.state
         if state is None or state["mode"] >= len(protocol.MODES):
             return None

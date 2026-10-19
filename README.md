@@ -20,7 +20,9 @@ adapter or an ESPHome Bluetooth proxy); otherwise add it from
 | Doorbell (event) | `ring`, `opened`, `denied` — one per occurrence, even several in a second |
 | Battery, Battery voltage (sensor) | % (linear 3.3–4.2 V) and mV |
 
-The mode select shows what the module reports. The module boots in "Do nothing"
+The mode select shows what the module reports; a newly picked mode shows
+until the write lands, and if the write fails the select falls back to the
+module's mode while Home Assistant keeps retrying. The module boots in "Do nothing"
 and keeps no settings, so Home Assistant remembers the chosen mode and writes it
 back whenever the module disagrees — after a reboot, or after a battery swap.
 A timed mode runs down on the module itself and falls back to "Do nothing",
