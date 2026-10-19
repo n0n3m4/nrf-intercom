@@ -52,6 +52,14 @@
 // A client that connects and stalls would otherwise keep adverts off for good.
 #define SESSION_TIMEOUT_MS 10000
 
+// Last resort, so the module can never go silent until someone presses RST:
+// it reboots (back in NONE, HA re-sends the mode) if a disconnect it asked for
+// is not confirmed in this long, if advertising stays down this long while
+// unconnected, or if main() stops looping for this long.
+#define DISCONNECT_GRACE_MS 5000
+#define ADV_DOWN_MAX_MS 15000
+#define MAIN_STALL_MAX_MS (2 * BATTERY_PERIOD_MS)
+
 #define PROTOCOL_VERSION 1
 
 enum mode
@@ -468,6 +476,20 @@ static void read_battery(void)
   s_batt_mv = (uint16_t)CLAMP(mv * 5, 0, UINT16_MAX);  // VDDH/5
 }
 
+// --- last resort ---------------------------------------------------------------
+
+static volatile int64_t s_main_alive;
+
+// Timer ISR: runs whatever state the threads are in.
+static void watchdog(struct k_timer *timer)
+{
+  if (k_uptime_get() - s_main_alive > MAIN_STALL_MAX_MS)
+  {
+    sys_reboot(SYS_REBOOT_COLD);
+  }
+}
+static K_TIMER_DEFINE(s_watchdog, watchdog, NULL);
+
 // --- main ------------------------------------------------------------------------
 
 int main(void)
@@ -492,10 +514,16 @@ int main(void)
     printk("lpcomp setup failed, rings will not be seen\n");
   }
 
+  s_main_alive = k_uptime_get();
+  k_timer_start(&s_watchdog, K_SECONDS(10), K_SECONDS(10));
+  int64_t disconnect_at = 0;  // we asked the client to go, at this uptime
+  int64_t adv_down_since = 0;
+
   publish(false);
   while (true)
   {
     int64_t now = k_uptime_get();
+    s_main_alive = now;
     bool burst = false;
 
     struct cmd c;
@@ -525,12 +553,33 @@ int main(void)
       read_battery();
       next_battery = now + BATTERY_PERIOD_MS;
     }
-    if (s_connected && now - s_last_activity > SESSION_TIMEOUT_MS && s_conn != NULL)
+    if (!s_connected)
+    {
+      disconnect_at = 0;
+    }
+    else if (disconnect_at == 0 && now - s_last_activity > SESSION_TIMEOUT_MS && s_conn != NULL)
     {
       printk("session idle, dropping\n");
       bt_conn_disconnect(s_conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+      disconnect_at = now;
+    }
+    else if (disconnect_at != 0 && now - disconnect_at > DISCONNECT_GRACE_MS)
+    {
+      sys_reboot(SYS_REBOOT_COLD);  // the stack never confirmed the disconnect
     }
     publish(burst);
+    if (s_connected || s_adv_kind >= 0)
+    {
+      adv_down_since = 0;
+    }
+    else if (adv_down_since == 0)
+    {
+      adv_down_since = now;
+    }
+    else if (now - adv_down_since > ADV_DOWN_MAX_MS)
+    {
+      sys_reboot(SYS_REBOOT_COLD);  // restarts kept failing
+    }
 
     // Sleep until the next thing that has a time, or any event.
     int64_t next = next_battery;
@@ -542,7 +591,11 @@ int main(void)
     {
       next = MIN(next, s_deadline);
     }
-    if (s_connected)
+    if (disconnect_at != 0)
+    {
+      next = MIN(next, disconnect_at + DISCONNECT_GRACE_MS + 1);
+    }
+    else if (s_connected)
     {
       next = MIN(next, s_last_activity + SESSION_TIMEOUT_MS + 1);
     }

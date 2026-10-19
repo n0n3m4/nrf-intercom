@@ -75,6 +75,10 @@ overlay.
   advertising fast (30–60 ms) for `FAST_ADV_BURST_MS`; battery and countdown
   updates only update data. Interval changes need stop/start, which
   `adv_apply()` owns; `F_ADV_LOST` tells it a connection stopped the advert.
+- **Last resort**: the module must never go silent. It reboots if a disconnect
+  it asked for is not confirmed in `DISCONNECT_GRACE_MS`, if advertising stays
+  down `ADV_DOWN_MAX_MS` while unconnected, or (a `k_timer` ISR) if `main()`
+  stops looping. A reboot is cheap: boot mode is NONE and HA re-sends its mode.
 - **Debug relays**: CTRL `[0x10, mask]` drives the relays by hand. Deliberately
   kept in release (it only duplicates the physical buttons); held only while
   the client stays connected, cleared by a ring action. Not an event.
