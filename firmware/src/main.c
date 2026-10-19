@@ -47,7 +47,7 @@
 #define ADV_FAST_MAX 96
 #define FAST_ADV_BURST_MS 3000
 
-#define BATTERY_PERIOD_MS (10 * 60 * 1000)
+#define BATTERY_PERIOD_MS (60 * 1000)
 // A client that connects and stalls would otherwise keep adverts off for good.
 #define SESSION_TIMEOUT_MS 10000
 

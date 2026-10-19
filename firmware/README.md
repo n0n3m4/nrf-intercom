@@ -51,7 +51,7 @@ advertised one differs.
 
 Idle is System ON with connectable adverts every 1–1.5 s. Every event (ring
 start/end, open, deny, mode change) restarts advertising at 30–60 ms for 3 s
-so a scanner sees it immediately; battery updates (every 10 min) do not.
+so a scanner sees it immediately; battery updates (every minute) do not.
 
 ## Protocol
 
