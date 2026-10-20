@@ -8,6 +8,7 @@ change all of them together.
 from __future__ import annotations
 
 import struct
+from bisect import bisect
 from typing import NamedTuple
 
 COMPANY = 0xFFFF
@@ -25,6 +26,20 @@ MODES = ("none", "deny", "allow", "allow_for", "allow_times")
 # Its 32 kHz crystal drifts ~2 s a day; it must stay well under the shortest
 # window (1 min), or allow_for lapses as soon as it is written.
 UNTIL_SLACK_S = 10
+
+# Calibration knob: a resting LiPo's open-circuit voltage at 0, 10 ... 100 %,
+# Meshtastic's OCV_ARRAY reversed. Linear between points.
+BATTERY_OCV_MV = (3100, 3300, 3420, 3530, 3630, 3720, 3800, 3890, 3990, 4050, 4190)
+
+
+def battery_percent(mv: int) -> int:
+    i = bisect(BATTERY_OCV_MV, mv)
+    if i == 0:
+        return 0
+    if i == len(BATTERY_OCV_MV):
+        return 100
+    lo, hi = BATTERY_OCV_MV[i - 1], BATTERY_OCV_MV[i]
+    return round((i - 1 + (mv - lo) / (hi - lo)) * 10)
 
 
 class Desired(NamedTuple):
@@ -111,6 +126,9 @@ def _selftest() -> None:
     assert command(Desired(ALLOW), state(ALLOW), 0, False) is None
     assert command(Desired(ALLOW), state(ALLOW), 0, True) == b"\x02"
     assert command(Desired(DENY), None, 0, False) == b"\x01"
+    # Battery % follows the OCV table, clamped at both ends.
+    assert [battery_percent(mv) for mv in (0, 3100, 3800, 3845, 4090, 4190, 4400)] == [
+        0, 0, 60, 65, 93, 100, 100]
     print("ok")
 
 

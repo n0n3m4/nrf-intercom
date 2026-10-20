@@ -13,11 +13,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import IntercomConfigEntry
 from .coordinator import IntercomEntity
-
-# Calibration knobs: the cell's empty and full voltages.
-# ponytail: linear LiPo curve, swap for a lookup table if % reads wrong mid-range.
-BATTERY_EMPTY_MV = 3300
-BATTERY_FULL_MV = 4200
+from .protocol import battery_percent
 
 
 async def async_setup_entry(
@@ -38,10 +34,7 @@ class IntercomBattery(IntercomEntity, SensorEntity):
     def native_value(self) -> int | None:
         if (state := self.coordinator.state) is None:
             return None
-        pct = (state["battery_mv"] - BATTERY_EMPTY_MV) * 100 // (
-            BATTERY_FULL_MV - BATTERY_EMPTY_MV
-        )
-        return max(0, min(100, pct))
+        return battery_percent(state["battery_mv"])
 
 
 class IntercomVoltage(IntercomEntity, SensorEntity):

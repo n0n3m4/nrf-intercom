@@ -18,7 +18,7 @@ adapter or an ESPHome Bluetooth proxy); otherwise add it from
 | Allow for, Allow rings (number) | Length and count used when a timed mode is picked |
 | Ringing (binary sensor) | On while the ring lasts |
 | Doorbell (event) | `ring`, `opened`, `denied` — one per occurrence, even several in a second |
-| Battery, Battery voltage (sensor) | % (linear 3.3–4.2 V) and mV |
+| Battery, Battery voltage (sensor) | % (Meshtastic's LiPo open-circuit table, 3.1–4.19 V) and mV |
 
 The mode select shows what the module reports; a newly picked mode shows
 until the write lands, and if the write fails the select falls back to the
