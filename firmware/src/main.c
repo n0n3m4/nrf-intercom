@@ -464,8 +464,12 @@ static void ring_action(void)
 
 static void read_battery(void)
 {
+  static unsigned s_reads;
   int16_t raw = 0;
-  struct adc_sequence seq = {.buffer = &raw, .buffer_size = sizeof(raw)};
+  // Offset calibration on the first read and every 10th after: it drifts with
+  // temperature, and once a minute would be wasted.
+  struct adc_sequence seq = {
+      .buffer = &raw, .buffer_size = sizeof(raw), .calibrate = s_reads++ % 10 == 0};
   adc_sequence_init_dt(&s_vbat, &seq);
   if (adc_read_dt(&s_vbat, &seq) != 0)
   {
