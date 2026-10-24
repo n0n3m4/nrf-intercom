@@ -13,7 +13,7 @@ approach as `~/espaper/nrf-port`.
 | P0.02 / AIN0 | ring line via 100k/20k | 12 V square → ~2.0 V |
 
 Both outputs use high drive (H0H1). The ring line goes to LPCOMP with a
-3/8 VDD (~1.24 V) threshold and hysteresis (`app.overlay`, `refsel`): move it if
+2/8 VDD (~0.83 V) threshold and hysteresis (`app.overlay`, `refsel`): move it if
 the line does not idle near 0 V. The divider must keep AIN0 inside 0..VDD;
 a line that swings negative needs a clamp diode.
 
@@ -37,7 +37,7 @@ On the first ring edge the device reports `ringing` and, after
 | Mode | Action |
 |---|---|
 | 0 NONE | report only |
-| 1 DENY | handset up `PICKUP_MS`, down |
+| 1 DENY | handset up `HANGUP_MS`, down |
 | 2 ALLOW | handset up, `PICKUP_MS`, button `PRESS_MS`, `HANGUP_MS`, handset down |
 | 3 ALLOW_UNTIL | ALLOW until the deadline, then NONE |
 | 4 ALLOW_N | ALLOW for N rings, then NONE |

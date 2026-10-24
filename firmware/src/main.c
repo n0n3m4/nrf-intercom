@@ -34,12 +34,13 @@
 #define RING_GAP_MS 3000
 // From the first ring edge to picking up the handset.
 #define RING_ACTION_DELAY_MS 1000
-// Handset held up before the button (ALLOW), or before hanging up (DENY).
+// Handset held up before the button (ALLOW).
 #define PICKUP_MS 1000
 // "Door open" button press length.
 #define PRESS_MS 500
-// Handset still up after the button is released.
-#define HANGUP_MS 1000
+// Last handset-up stretch: after the button is released (ALLOW), or the whole
+// hold (DENY). The panel needs ~2 s to see it.
+#define HANGUP_MS 2000
 
 // Advertising, in 0.625 ms units: slow 1.0-1.5 s idle, fast 30-60 ms in a burst.
 #define ADV_SLOW_MIN 1600
@@ -434,14 +435,14 @@ static void ring_action(void)
   s_acting = true;
   k_msleep(RING_ACTION_DELAY_MS);
   gpio_pin_set_dt(&s_handset, 1);
-  k_msleep(PICKUP_MS);
   if (m != MODE_DENY)
   {
+    k_msleep(PICKUP_MS);
     gpio_pin_set_dt(&s_door, 1);
     k_msleep(PRESS_MS);
     gpio_pin_set_dt(&s_door, 0);
-    k_msleep(HANGUP_MS);
   }
+  k_msleep(HANGUP_MS);
   set_relays(0);  // also ends any manual hold the action ran over
   // The ring may end at the earliest RING_GAP_MS from now; edges until then
   // only extend it, as during the action.

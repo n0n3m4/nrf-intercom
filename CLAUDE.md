@@ -65,7 +65,7 @@ overlay.
   `RING_GAP_MS` after it (`ring_action()` re-arms `s_ring_end`). That is both
   the cadence debounce and the guard against our own relays retriggering. Do
   not add a separate ignore/guard timer.
-- **Actions**: DENY = handset up `PICKUP_MS`, down (the door button is not
+- **Actions**: DENY = handset up `HANGUP_MS`, down (the door button is not
   touched). ALLOW = handset up, button pulse, handset down. ALLOW_UNTIL /
   ALLOW_N fall back to NONE when spent. Boot mode is NONE by design: HA
   re-sends its mode on mismatch, so there is no flash storage.

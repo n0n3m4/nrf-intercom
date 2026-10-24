@@ -48,7 +48,7 @@
 };
 
 /*
- * Ring detector. VDD is the board's 3.3 V regulator, so 3/8 VDD is ~1.24 V,
+ * Ring detector. VDD is the board's 3.3 V regulator, so 2/8 VDD is ~0.83 V,
  * between the divider's 0 V and ~2.0 V. Calibration knob: if the line idles
  * above 0 V or the ring is weaker, move refsel.
  */
@@ -56,7 +56,7 @@
 	compatible = "nordic,nrf-lpcomp";
 	status = "okay";
 	psel = <NRF_COMP_AIN0>;
-	refsel = "VDD_3_8";
+	refsel = "VDD_2_8";
 	enable-hyst;
 };
 
