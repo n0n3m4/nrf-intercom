@@ -39,9 +39,13 @@ class IntercomMode(IntercomEntity, RestoreEntity, SelectEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         want = self.coordinator.desired
         state = self.coordinator.state
+        timed = state is not None and state["mode"] in (
+            protocol.ALLOW_UNTIL,
+            protocol.ALLOW_N,
+        )
         return {
-            # Seconds left for allow_for, rings left for allow_times.
-            "remaining": state["remaining"] if state else None,
+            # Seconds left for allow_for, rings left for allow_times, else None.
+            "remaining": state["remaining"] if timed else None,
             "desired": protocol.MODES[want.mode],
             "deadline": want.deadline,
             "count": want.count,
