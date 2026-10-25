@@ -56,7 +56,9 @@
     },
     "sensor": {
       "battery": { "name": "Battery" },
-      "voltage": { "name": "Battery voltage" }
+      "voltage": { "name": "Battery voltage" },
+      "time_left": { "name": "Allow time left" },
+      "rings_left": { "name": "Allow rings left" }
     }
   }
 }
